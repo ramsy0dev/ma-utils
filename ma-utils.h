@@ -20,8 +20,3 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "ma-utils.h"
-
-int main() {
-	return 0;
-}
