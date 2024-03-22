@@ -112,8 +112,6 @@ static void ma_vector_memory_pool_destroy(MemoryPoolVector *pool) {
 //                             Encoding                                      //
 // ------------------------------------------------------------------------- //
 
-
-
 bool (*b58_sha256_impl)(void *, const void *, size_t) = NULL;
 
 #define UNI_REPLACEMENT_CHAR (uint32_t)0x0000FFFD
