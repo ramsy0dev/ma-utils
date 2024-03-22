@@ -1,4 +1,8 @@
-main.c # Testing file
+# Test file
+main.c
 
-bin/ # Build Directory
+# A build file
+build.sh
 
+# Build dir
+bin/
