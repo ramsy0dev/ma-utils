@@ -31,7 +31,7 @@
 //                      Costum memory allocation pool                        //
 // ------------------------------------------------------------------------- //
 
-static MemoryPoolVector *memory_pool_create(size_t size) {
+static MemoryPoolVector *ma_memory_pool_create(size_t size) {
     if (size == 0) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Memory pool size cannot be zero.\n");
@@ -62,7 +62,7 @@ static MemoryPoolVector *memory_pool_create(size_t size) {
     return pool;
 }
 
-static void *memory_pool_allocate(MemoryPoolVector *pool, size_t size) {
+static void *ma_memory_pool_allocate(MemoryPoolVector *pool, size_t size) {
     if (!pool) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Memory pool is not initialized.\n");
@@ -88,7 +88,7 @@ static void *memory_pool_allocate(MemoryPoolVector *pool, size_t size) {
     return mem;
 }
 
-static void memory_pool_destroy(MemoryPoolVector *pool) {
+static void ma_memory_pool_destroy(MemoryPoolVector *pool) {
     if (!pool) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Attempted to destroy a non-initialized memory pool.\n");
@@ -103,7 +103,7 @@ static void memory_pool_destroy(MemoryPoolVector *pool) {
 //                  CPP vector implementation in C                           //
 // ------------------------------------------------------------------------- //
 
-Vector* vector_create(size_t itemSize) {
+Vector* ma_vector_create(size_t itemSize) {
     Vector* vec = (Vector*)malloc(sizeof(Vector));
 
     if (!vec){
@@ -118,7 +118,7 @@ Vector* vector_create(size_t itemSize) {
     vec->itemSize = itemSize;
 
     size_t initialPoolSize = 100000;
-    vec->pool = memory_pool_create(initialPoolSize);
+    vec->pool = ma_memory_pool_create(initialPoolSize);
     if (!vec->pool) {
         free(vec);
         #ifdef VECTOR_LOGGING_ENABLE
@@ -128,9 +128,9 @@ Vector* vector_create(size_t itemSize) {
     }
 
     // Instead of malloc, use memory pool for initial allocation
-    vec->items = memory_pool_allocate(vec->pool, vec->capacitySize * itemSize);
+    vec->items = ma_memory_pool_allocate(vec->pool, vec->capacitySize * itemSize);
     if (!vec->items) {
-        memory_pool_destroy(vec->pool);
+        ma_memory_pool_destroy(vec->pool);
         free(vec);
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Can not allocate memory for Vector items");
@@ -156,7 +156,7 @@ bool vector_is_equal(const Vector* vec1, const Vector* vec2) {
     return memcmp(vec1->items, vec2->items, vec1->size * vec1->itemSize) == 0;
 }
 
-bool vector_is_less(const Vector* vec1, const Vector* vec2) {
+bool ma_vector_is_less(const Vector* vec1, const Vector* vec2) {
     if (!vec1 || !vec2) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: One or both vector pointers are NULL in vector_is_less.\n");
@@ -170,7 +170,7 @@ bool vector_is_less(const Vector* vec1, const Vector* vec2) {
     return cmp < 0 || (cmp == 0 && vec1->size < vec2->size);
 }
 
-bool vector_is_greater(const Vector* vec1, const Vector* vec2) {
+bool ma_vector_is_greater(const Vector* vec1, const Vector* vec2) {
     if (!vec1 || !vec2) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: One or both vector pointers are NULL in vector_is_greater.\n");
@@ -184,7 +184,7 @@ bool vector_is_greater(const Vector* vec1, const Vector* vec2) {
     return cmp > 0 || (cmp == 0 && vec1->size > vec2->size);
 }
 
-bool vector_is_not_equal(const Vector* vec1, const Vector* vec2) {
+bool ma_vector_is_not_equal(const Vector* vec1, const Vector* vec2) {
     if (!vec1 || !vec2) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: One or both vector pointers are NULL in vector_is_not_equal.\n");
@@ -200,27 +200,27 @@ bool vector_is_not_equal(const Vector* vec1, const Vector* vec2) {
     return memcmp(vec1->items, vec2->items, vec1->size * vec1->itemSize) != 0;
 }
 
-bool vector_is_greater_or_equal(const Vector* vec1, const Vector* vec2) {
+bool ma_vector_is_greater_or_equal(const Vector* vec1, const Vector* vec2) {
     if (!vec1 || !vec2) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: One or both vector pointers are NULL in vector_is_greater_or_equal.\n");
         #endif
         return false; // Handle the error as per your application's needs
     }
-    return !vector_is_less(vec1, vec2);
+    return !ma_vector_is_less(vec1, vec2);
 }
 
-bool vector_is_less_or_equal(const Vector* vec1, const Vector* vec2) {
+bool ma_vector_is_less_or_equal(const Vector* vec1, const Vector* vec2) {
     if (!vec1 || !vec2) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: One or both vector pointers are NULL in vector_is_less_or_equal.\n");
         #endif
         return false; // Handle the error as per your application's needs
     }
-    return !vector_is_greater(vec1, vec2);
+    return !ma_vector_is_greater(vec1, vec2);
 }
 
-bool vector_is_empty(Vector *vec) {
+bool ma_vector_is_empty(Vector *vec) {
     if (vec == NULL) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_is_empty_impl.\n");
@@ -230,7 +230,7 @@ bool vector_is_empty(Vector *vec) {
     return vec->size == 0;
 }
 
-void vector_erase(Vector *vec, size_t pos, size_t len) {
+void ma_vector_erase(Vector *vec, size_t pos, size_t len) {
     if (vec == NULL) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_erase.\n");
@@ -259,7 +259,7 @@ void vector_erase(Vector *vec, size_t pos, size_t len) {
     vec->size -= len;
 }
 
-void vector_insert(Vector *vec, size_t pos, void *item) {
+void ma_vector_insert(Vector *vec, size_t pos, void *item) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_insert.\n");
@@ -276,7 +276,7 @@ void vector_insert(Vector *vec, size_t pos, void *item) {
     if (vec->size == vec->capacitySize) {
         // Allocate new space from the memory pool
         size_t newCapacity = vec->capacitySize * 2; // Double the capacity
-        void *newItems = memory_pool_allocate(vec->pool, newCapacity * vec->itemSize);
+        void *newItems = ma_memory_pool_allocate(vec->pool, newCapacity * vec->itemSize);
 
         if (!newItems) {
             #ifdef VECTOR_LOGGING_ENABLE
@@ -306,7 +306,7 @@ void vector_insert(Vector *vec, size_t pos, void *item) {
     vec->size++;
 }
 
-bool vector_reserve(Vector *vec, size_t size) {
+bool ma_vector_reserve(Vector *vec, size_t size) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_reserve.\n");
@@ -317,7 +317,7 @@ bool vector_reserve(Vector *vec, size_t size) {
         return true;
     }
 
-    void *newItems = memory_pool_allocate(vec->pool, size * vec->itemSize);
+    void *newItems = ma_memory_pool_allocate(vec->pool, size * vec->itemSize);
     if (!newItems) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Failed to allocate memory for vector_reserve.\n");
@@ -333,7 +333,7 @@ bool vector_reserve(Vector *vec, size_t size) {
     return true;
 }
 
-void vector_resize(Vector *vec, size_t size) {
+void ma_vector_resize(Vector *vec, size_t size) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_resize.\n");
@@ -341,7 +341,7 @@ void vector_resize(Vector *vec, size_t size) {
         return; // Handle the error as per your application's needs
     }
     if (size > vec->capacitySize) {
-        vector_reserve(vec, size); // Resize capacity if new size exceeds current capacity
+        ma_vector_reserve(vec, size); // Resize capacity if new size exceeds current capacity
     }
     if (vec->size < size) {
         memset((char *)vec->items + vec->size * vec->itemSize, 0, (size - vec->size) * vec->itemSize);  // Initialize new elements to 0 if size is increased
@@ -349,7 +349,7 @@ void vector_resize(Vector *vec, size_t size) {
     vec->size = size;
 }
 
-void vector_shrink_to_fit(Vector *vec) {
+void ma_vector_shrink_to_fit(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_shrink_to_fit.\n");
@@ -368,7 +368,7 @@ void vector_shrink_to_fit(Vector *vec) {
         return;
     }
 
-    void *newItems = memory_pool_allocate(vec->pool, vec->size * vec->itemSize);
+    void *newItems = ma_memory_pool_allocate(vec->pool, vec->size * vec->itemSize);
     if (!newItems) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Failed to allocate memory for vector_shrink_to_fit.\n");
@@ -381,7 +381,7 @@ void vector_shrink_to_fit(Vector *vec) {
     vec->capacitySize = vec->size;
 }
 
-void vector_swap(Vector *vec1, Vector *vec2) {
+void ma_vector_swap(Vector *vec1, Vector *vec2) {
     if (!vec1 || !vec2) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: One or both vectors are NULL in vector_swap.\n");
@@ -406,7 +406,7 @@ void vector_swap(Vector *vec1, Vector *vec2) {
     vec2->itemSize = tempItemSize;
 }
 
-void vector_assign(Vector *vec, size_t pos, void *item) {
+void ma_vector_assign(Vector *vec, size_t pos, void *item) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_assign.\n");
@@ -422,7 +422,7 @@ void vector_assign(Vector *vec, size_t pos, void *item) {
     memcpy((char *)vec->items + pos * vec->itemSize, item, vec->itemSize);
 }
 
-void vector_emplace(Vector *vec, size_t pos, void *item, size_t itemSize) {
+void ma_vector_emplace(Vector *vec, size_t pos, void *item, size_t itemSize) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_emplace.\n");
@@ -436,7 +436,7 @@ void vector_emplace(Vector *vec, size_t pos, void *item, size_t itemSize) {
         return; // Handle the error as per your application's needs
     }
     if (vec->size == vec->capacitySize) {
-        vector_reserve(vec, vec->capacitySize * 2); // Use the modified version
+        ma_vector_reserve(vec, vec->capacitySize * 2); // Use the modified version
     }
 
     char *base = (char *)vec->items;
@@ -448,7 +448,7 @@ void vector_emplace(Vector *vec, size_t pos, void *item, size_t itemSize) {
     vec->size++;
 }
 
-bool vector_emplace_back(Vector *vec, void *item, size_t itemSize) {
+bool ma_vector_emplace_back(Vector *vec, void *item, size_t itemSize) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_emplace_back.\n");
@@ -462,7 +462,7 @@ bool vector_emplace_back(Vector *vec, void *item, size_t itemSize) {
         return false; // Indicate failure
     }
     if (vec->size >= vec->capacitySize) {
-        if (!vector_reserve(vec, vec->capacitySize * 2)) {
+        if (!ma_vector_reserve(vec, vec->capacitySize * 2)) {
             return false; // vector_reserve failed, indicate failure
         }
     }
@@ -472,7 +472,7 @@ bool vector_emplace_back(Vector *vec, void *item, size_t itemSize) {
     return true; // Indicate success
 }
 
-bool vector_push_back(Vector *vec, const void *item) {
+bool ma_vector_push_back(Vector *vec, const void *item) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_push_back.\n");
@@ -483,7 +483,7 @@ bool vector_push_back(Vector *vec, const void *item) {
     if (vec->size >= vec->capacitySize) {
         size_t newCapacity = vec->capacitySize * 2; // Example growth strategy
         // Allocate new space from the memory pool
-        void *newItems = memory_pool_allocate(vec->pool, newCapacity * vec->itemSize);
+        void *newItems = ma_memory_pool_allocate(vec->pool, newCapacity * vec->itemSize);
         if (!newItems) {
             #ifdef VECTOR_LOGGING_ENABLE
                 printf("Error: Failed to allocate memory in vector_push_back.\n");
@@ -502,7 +502,7 @@ bool vector_push_back(Vector *vec, const void *item) {
     return true; // Indicate success
 }
 
-void vector_deallocate(Vector *vec) {
+void ma_vector_deallocate(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_deallocate.\n");
@@ -510,7 +510,7 @@ void vector_deallocate(Vector *vec) {
         return; // Handle the error as per your application's needs
     }
     if (vec->pool != NULL) {
-        memory_pool_destroy(vec->pool);
+        ma_memory_pool_destroy(vec->pool);
         vec->pool = NULL;
     }
     if (vec->items != NULL) {
@@ -538,7 +538,7 @@ void *vector_at(const Vector *vec, size_t pos) {
     }
 }
 
-void *vector_rbegin(Vector *vec) {
+void* ma_vector_rbegin(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_rbegin.\n");
@@ -555,7 +555,7 @@ void *vector_rbegin(Vector *vec) {
     return (void *)((char *)vec->items + (vec->size - 1) * vec->itemSize); // Last element
 }
 
-void *vector_rend(Vector *vec) {
+void* ma_vector_rend(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_rend.\n");
@@ -565,7 +565,7 @@ void *vector_rend(Vector *vec) {
     return (void *)((char *)vec->items - vec->itemSize); // One before the first element
 }
 
-const void *vector_cbegin(Vector *vec) {
+const void* ma_vector_cbegin(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_cbegin.\n");
@@ -581,7 +581,7 @@ const void *vector_cbegin(Vector *vec) {
     return (const void *)vec->items;
 }
 
-const void *vector_cend(Vector *vec) {
+const void *ma_vector_cend(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_cend.\n");
@@ -597,7 +597,7 @@ const void *vector_cend(Vector *vec) {
     return (const void *)((char *)vec->items + (vec->size * vec->itemSize)); // One past the last element, as a read-only pointer
 }
 
-const void *vector_crbegin(Vector *vec) {
+const void *ma_vector_crbegin(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_crbegin.\n");
@@ -613,7 +613,7 @@ const void *vector_crbegin(Vector *vec) {
     return (const void *)((char *)vec->items + (vec->size - 1) * vec->itemSize); // Last element, as a read-only pointer
 }
 
-const void *vector_crend(Vector *vec) {
+const void* ma_vector_crend(Vector *vec) {
     if (vec == NULL) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_crend.\n");
@@ -623,7 +623,7 @@ const void *vector_crend(Vector *vec) {
     return (const void *)((char *)vec->items - vec->itemSize); // One before the first element, as a read-only pointer
 }
 
-void *vector_begin(Vector *vec) {
+void* ma_vector_begin(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_crend.\n");
@@ -633,7 +633,7 @@ void *vector_begin(Vector *vec) {
     return vec->items; // Pointer to the first element
 }
 
-void *vector_end(Vector *vec) {
+void* ma_vector_end(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_end.\n");
@@ -649,7 +649,7 @@ void *vector_end(Vector *vec) {
     return (char *)vec->items + (vec->size * vec->itemSize); // One past the last element
 }
 
-void *vector_pop_back(Vector *vec) {
+void* ma_vector_pop_back(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_pop_back.\n");
@@ -667,7 +667,7 @@ void *vector_pop_back(Vector *vec) {
     return (char *)vec->items + (vec->size * vec->itemSize);
 }
 
-void vector_clear(Vector *vec) {
+void ma_vector_clear(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_clear.\n");
@@ -679,7 +679,7 @@ void vector_clear(Vector *vec) {
     // Optionally reduce capacity. Choose an appropriate size for your use case.
     size_t reducedCapacity = 4; // Or some other small size
     if (vec->capacitySize > reducedCapacity) {
-        void *newItems = memory_pool_allocate(vec->pool, reducedCapacity * vec->itemSize);
+        void *newItems = ma_memory_pool_allocate(vec->pool, reducedCapacity * vec->itemSize);
         if (newItems != NULL || reducedCapacity == 0) {
             vec->items = newItems;
             vec->capacitySize = reducedCapacity;
@@ -692,7 +692,7 @@ void vector_clear(Vector *vec) {
     }
 }
 
-void *vector_front(Vector *vec) {
+void* ma_vector_front(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_front.\n");
@@ -708,7 +708,7 @@ void *vector_front(Vector *vec) {
     return vec->items; // The first element is at the beginning of the items array
 }
 
-void *vector_back(Vector *vec) {
+void* ma_vector_back(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             printf("Error: Vector is NULL in vector_back.\n");
@@ -724,7 +724,7 @@ void *vector_back(Vector *vec) {
     return (char *)vec->items + (vec->size - 1) * vec->itemSize; // The last element is at (size - 1) * itemSize offset from the beginning
 }
 
-void *vector_data(Vector *vec) {
+void*  ma_vector_data(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             fmt_fprintf(stderr, "Error: Vector is NULL in vector_data.\n");
@@ -734,25 +734,7 @@ void *vector_data(Vector *vec) {
     return vec->items; // The underlying array
 }
 
-/**
- * @brief Returns the number of elements currently stored in the vector.
- *
- * This function provides the current size of the vector, indicating how many elements are currently stored in it.
- * The size can be used to determine the number of elements that are actually accessible within the vector.
- * It is an essential attribute for iterating over the vector's elements or when making decisions based on the vector's
- * occupancy.
- *
- * @param vec A pointer to a constant Vector instance to query for its size. The vector should have been properly initialized
- * before invoking this function.
- * @return The current number of elements in the vector as a `size_t` value. If the vector pointer is NULL,
- * the function returns 0. In case `VECTOR_LOGGING_ENABLE` is defined, it logs an error message to `stderr` to indicate
- * that the input vector pointer is NULL.
- *
- * @note Error Handling: The function checks if the input vector pointer is NULL. If so, and `VECTOR_LOGGING_ENABLE` is defined,
- * it outputs an error message to `stderr`. This approach aids in identifying issues during development,
- * but the specific error handling strategy might need to be adapted to fit the application's requirements.
- */
-size_t vector_size(const Vector *vec) {
+size_t ma_vector_size(const Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             fmt_fprintf(stderr, "Error: Vector is NULL in vector_size.\n");
@@ -762,24 +744,7 @@ size_t vector_size(const Vector *vec) {
     return vec->size;
 }
 
-/**
- * @brief Retrieves the current capacity of the vector.
- *
- * This function returns the current capacity of the vector, which is the number of elements it can hold before needing to
- * allocate more memory. It is an important function for understanding the memory efficiency and performance characteristics
- * of the vector, especially in scenarios where minimizing reallocations is critical.
- *
- * @param vec A pointer to the Vector instance whose capacity is queried. The vector must be properly initialized before
- * calling this function.
- * @return The capacity of the vector as a `size_t` value, representing the maximum number of elements it can currently
- * hold without reallocating memory. If the vector is NULL, the function returns 0, and if `VECTOR_LOGGING_ENABLE` is defined,
- * an error message is logged to `stderr`.
- *
- * @note The function checks if the input vector pointer is NULL. If it is, and if `VECTOR_LOGGING_ENABLE` is defined,
- * an error message is printed to `stderr`. This aids in debugging but may need to be adjusted or enhanced based on specific
- * requirements for error reporting in your application.
- */
-size_t vector_capacity(Vector *vec) {
+size_t ma_vector_capacity(Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
             fmt_fprintf(stderr, "Error: Vector is NULL in vector_capacity.\n");
@@ -789,24 +754,7 @@ size_t vector_capacity(Vector *vec) {
     return vec->capacitySize;
 }
 
-/**
- * @brief Calculates the maximum number of elements that the vector can hold based on its item size.
- *
- * This function provides the maximum size that a vector can achieve, which is determined by the size of the items it holds.
- * It is crucial to note that this function returns the item size, which might not accurately represent the 'maximum size'
- * in terms of the number of elements. Typically, the maximum size would depend on the total amount of memory available and
- * the size of each element, so the implementation might need a revision to reflect the true maximum capacity of the vector.
- *
- * @param vec A pointer to the Vector instance whose maximum size is to be determined.
- * @return The size of the items in the vector as `size_t`.
- * This is indicative of the item size rather than the maximum number of items the vector can hold. If the vector is NULL,
- * the function returns 0, and an error message is logged to `stderr` if `VECTOR_LOGGING_ENABLE` is defined.
- *
- * @note This function checks if the provided vector pointer is NULL. If so, and if `VECTOR_LOGGING_ENABLE` is defined,
- * it logs an error message to `stderr`. This behavior is useful for debugging but might need adjustment based on specific
- * application requirements for error handling.
- */
-size_t vector_max_size(Vector *vec) {
+size_t ma_vector_max_size(Vector *vec) {
     if (!vec) {
         #ifdef MA_UTILS_DEBUGGER
             fmt_fprintf(stderr, "Error: Vector is NULL in vector_max_size.\n");
