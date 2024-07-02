@@ -5124,6 +5124,19 @@ void*  ma_vector_data(Vector *vec) {
     return vec->items; // The underlying array
 }
 
+void* ma_vector_at(const Vector* vec, size_t index) {
+    // Check if the index is within bounds
+    if (index >= vec->size) {
+        return NULL;
+    }
+
+    // Calculate the offset into the items array
+    size_t offset = index * vec->itemSize;
+
+    // Return a pointer to the item at the calculated offset
+    return ((char*)vec->items) + offset;
+}
+
 size_t ma_vector_size(const Vector *vec) {
     if (!vec) {
         #ifdef VECTOR_LOGGING_ENABLE
