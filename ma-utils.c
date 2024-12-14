@@ -4425,7 +4425,7 @@ bool ma_file_writer_write_batch(FileWriter* writer, const void** buffers, const 
             default: // Default case is ENCODING_UTF16
             case WRITE_ENCODING_UTF16: {
                 #if defined(_WIN32) || defined(_WIN64)
-                    wchar_t* wBuffer = encoding_utf8_to_wchar((const char*)buffer);
+                    wchar_t* wBuffer = ma_encoding_utf8_to_wchar((const char*)buffer);
                     if (!wBuffer) {
                         printf("Error: Conversion to wchar_t failed in file_writer_write_batch.\n");
                         continue;
@@ -4484,6 +4484,585 @@ bool ma_file_writer_append_fmt(FileWriter* writer, const char* format, ...) {
     va_end(args);
 
     return written > 0;
+}
+
+// File reader
+
+FileReader* ma_file_reader_open(const char* filename, const ReadMode mode) {
+    if (!filename) {
+        
+        exit(-1);
+    }
+
+    FileReader* reader = (FileReader*) malloc(sizeof(FileReader));
+    if (!reader) {
+        
+        exit(-1);
+    }
+    const char* modeStr = NULL;
+
+    switch (mode) {
+        case READ_TEXT:
+            modeStr = "r";
+            break;
+        case READ_BINARY:
+            modeStr = "rb";
+            break;
+        case READ_UNICODE:
+            #if defined(_WIN32) || defined(_WIN64)
+            modeStr = "r, ccs=UTF-16LE";
+            #else
+            modeStr = "r";
+            #endif
+            break;
+        case READ_BUFFERED:
+            modeStr = "r";
+            break;
+        case READ_UNBUFFERED:
+            modeStr = "r";
+            break;
+        default:
+            
+            #if defined(_WIN32) || defined(_WIN64)
+            modeStr = "r, ccs=UTF-16LE";
+            #else
+            modeStr = "r";
+            #endif
+            break;
+    }
+
+    #if defined(_WIN32) || defined(_WIN64)
+    wchar_t* wFileName = ma_encoding_utf8_to_wchar(filename);
+    wchar_t* wMode = ma_encoding_utf8_to_wchar(modeStr);
+
+    if (!wMode) {
+        
+        exit(-1);
+    }
+    if (!wFileName) {
+        
+        exit(-1);
+    }
+    reader->file_reader = _wfopen(wFileName, wMode);
+    free(wMode);
+    free(wFileName);
+    #else 
+    reader->file_reader = fopen(filename, modeStr);
+    #endif 
+
+    if (reader->file_reader == NULL) {
+        
+        free(reader);
+        exit(-1);
+    }
+    reader->mode = mode;
+    reader->is_open = true;
+    reader->encoding = READ_ENCODING_UTF16;
+    reader->file_path = ma_string_strdup(filename);
+
+    
+    return reader;
+}
+
+/**
+ * @brief Closes the file associated with the given `FileReader`.
+ *
+ * This function closes the file associated with the `FileReader` structure.
+ * It ensures that all resources are properly released.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return `true` if the file was successfully closed, `false` otherwise.
+ */
+bool ma_file_reader_close(FileReader *reader) {
+    if (!reader) {
+        
+        return false;
+    }
+    if (reader->file_reader && fclose(reader->file_reader)) {
+        
+        return false;
+    }
+    
+    if (reader->file_path) {
+        free(reader->file_path);
+        reader->file_path = NULL;
+    }
+
+    reader->is_open = false;
+    free(reader); // Optionally free the FileReader object itself if it's dynamically allocated
+    
+    
+    return true;
+}
+
+/**
+ * @brief Gets the current position of the file pointer.
+ *
+ * This function returns the current position of the file pointer in the file associated with the `FileReader`.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return The current position of the file pointer as a `size_t`. Returns `(size_t)-1` on error.
+ */
+size_t ma_file_reader_get_position(FileReader *reader) {
+    if (reader->file_reader == NULL) {
+        
+        return (size_t)-1;
+    }
+
+    long cursor_position = ftell(reader->file_reader);
+    if (cursor_position == -1L) {
+        
+        return (size_t)-1;
+    }
+
+    
+    return (size_t)cursor_position;
+}
+
+/**
+ * @brief Checks if the file is open.
+ *
+ * This function checks if the file associated with the `FileReader` structure is open.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return `true` if the file is open, `false` otherwise.
+ */
+bool ma_file_reader_is_open(FileReader* reader) {
+    if (!reader) {
+        
+        return false;
+    }
+    if (reader->file_reader == NULL) {
+        
+        return false;
+    }
+    
+    return reader->is_open;
+}
+
+/**
+ * @brief Sets the encoding for reading the file.
+ *
+ * This function sets the encoding type for reading the file associated with the `FileReader`.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * @param encoding The encoding type to set, specified by the `ReadEncodingType` enum.
+ * 
+ * @return `true` if the encoding was successfully set, `false` otherwise.
+ */
+bool ma_file_reader_set_encoding(FileReader* reader, const ReadEncodingType encoding) {
+    if (!reader || reader->file_reader == NULL) {
+        
+        return false;
+    }
+    if (!(encoding >= READ_ENCODING_UTF16 && encoding <= READ_ENCODING_UTF32)) {
+        
+        return false;
+    }
+    reader->encoding = encoding;
+    
+    return true;
+}
+
+/**
+ * @brief Retrieves the absolute path of the file associated with the `FileReader`.
+ *
+ * This function returns the absolute path of the file associated with the `FileReader` structure.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return The absolute path of the file as a constant string. Returns `NULL` on error.
+ */
+const char *file_reader_get_file_name(FileReader *reader) {
+    if (!reader || reader->file_reader == NULL) {
+        
+        return NULL;
+    }
+    if (!reader->file_path) {
+        
+        return NULL;
+    }
+    
+    return (const char*)reader->file_path;
+}
+
+/**
+ * @brief Moves the file pointer to a specific location.
+ *
+ * This function moves the file pointer to a specific location in the file for random access reading.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * @param offset The offset from the position specified by `cursor_pos`.
+ * @param cursor_pos The reference position from which to calculate the offset, specified by the `CursorPosition` enum.
+ * 
+ * @return `true` if the seek operation was successful, `false` otherwise.
+ */
+bool ma_file_reader_seek(FileReader *reader, long offset, const CursorPosition cursor_pos) {
+    if (!reader || reader->file_reader == NULL) {
+        
+        return false;
+    }
+    int pos;
+
+    switch (cursor_pos) {
+        case POS_BEGIN:
+            pos = SEEK_SET;
+            break;
+        case POS_END:
+            pos = SEEK_END;
+            break;
+        case POS_CURRENT:
+            pos = SEEK_CUR;
+            break;
+        default:
+            
+            pos = SEEK_SET;
+            break;
+    }
+    
+    if (fseek(reader->file_reader, offset, pos) != 0) {
+        
+        return false;
+    }
+
+    
+    return true;
+}
+
+/**
+ * @brief Checks if the end of the file has been reached.
+ *
+ * This function checks if the end of the file associated with the `FileReader` structure has been reached.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return `true` if the end of the file has been reached, `false` otherwise.
+ */
+bool ma_file_reader_eof(FileReader* reader) {
+    if (!reader || reader->file_reader == NULL) {
+        
+        return false;
+    }
+
+    bool eof_reached = feof(reader->file_reader) != 0;
+    
+
+    return eof_reached;
+}
+
+/**
+ * @brief Gets the size of the file associated with the `FileReader`.
+ *
+ * This function returns the size of the file in bytes.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return The size of the file in bytes, or `0` on error.
+ */
+size_t ma_file_reader_get_size(FileReader* reader) {
+    if (!reader || reader->file_reader == NULL) {
+        
+        return 0;
+    }
+
+    long current_position = ma_file_reader_get_position(reader);
+    if (fseek(reader->file_reader, 0, SEEK_END) != 0) {
+        
+        return 0;
+    }
+
+    size_t size = ma_file_reader_get_position(reader);
+    if (fseek(reader->file_reader, current_position, SEEK_SET) != 0) {
+        
+    }
+
+    
+    return size;
+}
+
+/**
+ * @brief Reads data from the file into a buffer.
+ *
+ * This function reads data from the file associated with the `FileReader` into a specified buffer.
+ *
+ * @param buffer A pointer to the buffer where the data will be stored.
+ * @param size The size of each element to read.
+ * @param count The number of elements to read.
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return The total number of elements successfully read, or `0` on error.
+ */
+size_t ma_file_reader_read(void* buffer, size_t size, size_t count, FileReader* reader) {
+    if (!reader || !reader->file_reader || !buffer) {
+        
+        return 0;
+    }
+
+    if (reader->mode == READ_BINARY || reader->mode == READ_UNBUFFERED || reader->mode == READ_BUFFERED) {
+        size_t elements_read = fread(buffer, size, count, reader->file_reader);
+        
+        return elements_read;
+    }
+
+    if (reader->mode == READ_TEXT) {
+        size_t elements_read = fread(buffer, size, count, reader->file_reader);
+        ((char*)buffer)[elements_read] = '\0'; // Null-terminate
+        
+        return elements_read;
+    }
+
+    // For Unicode (UTF-16) reading, handle conversion to UTF-8
+    if (reader->mode == READ_UNICODE) {
+        wchar_t* rawBuffer = (wchar_t*)malloc(sizeof(wchar_t) * (count + 1)); // Buffer for UTF-16 data
+        if (!rawBuffer) {
+            
+            return 0;
+        }
+
+        size_t actualRead = fread(rawBuffer, sizeof(wchar_t), count, reader->file_reader);
+        rawBuffer[actualRead] = L'\0'; // Null-terminate the UTF-16 buffer
+
+        // Convert UTF-16 to UTF-8
+        char* utf8Buffer = (char*) ma_encoding_utf16_to_utf8((uint16_t*)rawBuffer, actualRead);
+        free(rawBuffer);
+
+        if (!utf8Buffer) {
+            
+            return 0;
+        }
+
+        size_t utf8Length = strlen(utf8Buffer);
+
+        // Copy converted UTF-8 data to the output buffer
+        size_t bytesToCopy = (utf8Length < count * size) ? utf8Length : count * size - 1;
+        memcpy(buffer, utf8Buffer, bytesToCopy);
+        ((char*)buffer)[bytesToCopy] = '\0'; // Null-terminate the output buffer
+        free(utf8Buffer);
+
+        
+        return bytesToCopy;
+    }
+
+    
+    return 0;
+}
+
+
+/**
+ * @brief Reads a line of text from the file.
+ *
+ * This function reads a single line of text from the file associated with the `FileReader`.
+ *
+ * @param buffer A pointer to the buffer where the line will be stored.
+ * @param size The maximum number of characters to read, including the null terminator.
+ * @param reader A pointer to the `FileReader` structure.
+ * 
+ * @return `true` if a line was successfully read, `false` otherwise.
+ */
+bool ma_file_reader_read_line(char* buffer, size_t size, FileReader* reader) {
+    if (!reader || !reader->file_reader || !buffer) {
+        
+        return false;
+    }
+    if (reader->encoding == READ_ENCODING_UTF16 && reader->mode == READ_UNICODE) {
+        wchar_t wBuffer[1024];
+        if (fgetws(wBuffer, 1024, reader->file_reader) == NULL) {
+            if (!feof(reader->file_reader)) {
+                
+            }
+            return false;
+        }
+
+        char* utf8Buffer = ma_encoding_wchar_to_utf8(wBuffer);
+        if (!utf8Buffer) {
+            
+            return false;
+        }
+
+        strncpy(buffer, utf8Buffer, size - 1);
+        buffer[size - 1] = '\0';
+        free(utf8Buffer);
+
+        
+    } 
+    else {
+        // For UTF-8 and other encodings
+        if (fgets(buffer, size, reader->file_reader) == NULL) {
+            if (!feof(reader->file_reader)) {
+                
+            }
+            return false;
+        }
+
+        // Remove newline characters
+        buffer[strcspn(buffer, "\r\n")] = '\0';
+
+        
+    }
+
+    return true;
+}
+
+/**
+ * @brief Reads formatted data from the file.
+ *
+ * This function reads formatted data from the file associated with the `FileReader`.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * @param format The format string specifying how to interpret the data.
+ * 
+ * @return The number of items successfully read, or `0` on error.
+ */
+size_t ma_file_reader_read_fmt(FileReader* reader, const char* format, ...) {
+    if (!reader || !reader->file_reader || !format) {
+        
+        return 0;
+    }
+
+    wchar_t wBuffer[1024]; 
+    if (fgetws(wBuffer, sizeof(wBuffer) / sizeof(wchar_t), reader->file_reader) == NULL) {
+        
+        return 0; 
+    }
+
+    char* utf8Buffer = ma_encoding_wchar_to_utf8(wBuffer);
+    if (!utf8Buffer) {
+        
+        return 0;
+    }
+
+    va_list args;
+    va_start(args, format);
+
+    size_t read = vsscanf(utf8Buffer, format, args);
+
+    va_end(args);
+    free(utf8Buffer);
+
+    
+    return read; 
+}
+
+/**
+ * @brief Copies the contents of one file to another.
+ *
+ * This function copies the contents of the source file associated with the `FileReader` to the destination file associated with the `FileWriter`.
+ *
+ * @param src_reader A pointer to the `FileReader` structure for the source file.
+ * @param dest_writer A pointer to the `FileWriter` structure for the destination file.
+ * 
+ * @return `true` if the copy operation was successful, `false` otherwise.
+ */
+bool ma_file_reader_copy(FileReader* src_reader, FileWriter* dest_writer) {
+    if (!src_reader || !src_reader->file_reader || !dest_writer || !dest_writer->file_writer) {
+        
+        return false;
+    }
+
+    wchar_t wBuffer[1024]; // Wide character buffer for UTF-16 data
+    size_t bytesRead, bytesToWrite;
+
+    while ((bytesRead = fread(wBuffer, sizeof(wchar_t), 1024, src_reader->file_reader)) > 0) {
+        char* utf8Buffer = NULL;
+        size_t utf8BufferSize = 0;
+
+        switch (src_reader->encoding) {
+            case READ_ENCODING_UTF16:
+                utf8Buffer = ma_encoding_wchar_to_utf8(wBuffer);
+                if (!utf8Buffer) {
+                    
+                    return false;
+                }
+                utf8BufferSize = ma_string_length_utf8(utf8Buffer);
+                
+                break;
+
+            default:
+                
+                return false;
+        }
+
+        // Write the UTF-8 data to the destination file
+        bytesToWrite = utf8BufferSize;
+        size_t bytesWritten = ma_file_writer_write(utf8Buffer, sizeof(char), bytesToWrite, dest_writer);
+        free(utf8Buffer);
+
+        if (bytesWritten < bytesToWrite) {
+            
+            return false;
+        }
+
+        
+    }
+
+    if (feof(src_reader->file_reader)) {
+        
+    } 
+    else {
+        
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Reads multiple lines of text from the file.
+ *
+ * This function reads a specified number of lines from the file associated with the `FileReader`.
+ *
+ * @param reader A pointer to the `FileReader` structure.
+ * @param buffer A pointer to an array of strings where the lines will be stored.
+ * @param num_lines The number of lines to read.
+ * 
+ * @return `true` if the lines were successfully read, `false` otherwise.
+ */
+bool ma_file_reader_read_lines(FileReader* reader, char*** buffer, size_t num_lines) {
+    if (!reader || !reader->file_reader || !buffer) {
+        
+        return false;
+    }
+
+    *buffer = (char**) malloc(num_lines * sizeof(char*));
+    if (!*buffer) {
+        
+        return false;
+    }
+
+    size_t lines_read = 0;
+    char line_buffer[1024]; 
+
+    while (lines_read < num_lines && !feof(reader->file_reader)) {
+        if (ma_file_reader_read_line(line_buffer, sizeof(line_buffer), reader)) {
+            (*buffer)[lines_read] = string_strdup(line_buffer);
+            if (!(*buffer)[lines_read]) {
+                
+                // Free previously allocated lines
+                for (size_t i = 0; i < lines_read; ++i) {
+                    free((*buffer)[i]);
+                }
+                free(*buffer);
+                return false;
+            }
+            
+            lines_read++;
+        } 
+        else {
+            
+        }
+    }
+
+    if (lines_read == num_lines) {
+        
+    } 
+    else {
+        
+    }
+
+    return lines_read == num_lines;
 }
 
 // ------------------------------------------------------------------------- //
